@@ -98,13 +98,13 @@
       });
     }
 
-    async function deleteFile(filename) {
-      await fetch(`http://localhost:5000/delete/${filename}`, { method: "DELETE" });
-      loadMediaList();
-    }
+    fetch("https://my-app.onrender.com/api/data")
+  .then(res => res.json())
+  .then(data => console.log(data));
 
     startCamera();
     loadMediaList();
   </script>
 </body>
 </html>
+
