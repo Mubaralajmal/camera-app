@@ -1,39 +1,59 @@
 const express = require("express");
 const multer = require("multer");
-const fs = require("fs");
 const cors = require("cors");
+const fs = require("fs");
 const path = require("path");
 
 const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Enable CORS (so GitHub Pages can call backend)
 app.use(cors());
-app.use("/uploads", express.static("uploads"));
 
-// Ensure uploads folder exists
-if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
+// Serve static files from uploads folder
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+// Setup multer (file uploads)
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, "uploads/"),
-  filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
+  destination: (req, file, cb) => {
+    const dir = path.join(__dirname, "uploads");
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir);
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-" + file.originalname);
+  }
 });
 const upload = multer({ storage });
 
+// ✅ Upload file
 app.post("/upload", upload.single("file"), (req, res) => {
-  res.json({ message: "File uploaded", file: req.file.filename });
+  res.json({ file: req.file.filename });
 });
 
+// ✅ Get list of files
 app.get("/files", (req, res) => {
-  fs.readdir("uploads", (err, files) => {
-    if (err) return res.status(500).send("Error reading files");
-    res.json(files);
-  });
+  const dir = path.join(__dirname, "uploads");
+  if (!fs.existsSync(dir)) return res.json([]);
+  const files = fs.readdirSync(dir);
+  res.json(files);
 });
 
+// ✅ Delete file
 app.delete("/delete/:filename", (req, res) => {
-  const filePath = path.join(__dirname, "uploads", req.params.filename);
-  fs.unlink(filePath, err => {
-    if (err) return res.status(500).send("Error deleting file");
-    res.json({ message: "File deleted" });
-  });
+  const filepath = path.join(__dirname, "uploads", req.params.filename);
+  if (fs.existsSync(filepath)) {
+    fs.unlinkSync(filepath);
+    return res.json({ success: true });
+  }
+  res.status(404).json({ error: "File not found" });
 });
 
-app.listen(5000, () => console.log("✅ Backend running at http://localhost:5000"));
+// ✅ Root endpoint
+app.get("/", (req, res) => {
+  res.send("Camera backend is running 🚀");
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
